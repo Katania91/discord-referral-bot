@@ -1,0 +1,21 @@
+{
+  "name": "referral-bot",
+  "version": "1.0.0",
+  "description": "Discord referral bot with weekly tokens, confirmations and leaderboard",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "register": "node src/registerCommands.js"
+  },
+  "author": "Katania91",
+  "license": "MIT",
+  "dependencies": {
+    "mysql2": "^3.9.7",
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5",
+    "node-cron": "^3.0.3"
+  },
+  "optionalDependencies": {
+    "better-sqlite3": "^9.4.0"
+  }
+}
