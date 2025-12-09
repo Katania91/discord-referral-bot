@@ -221,7 +221,7 @@ const dbCtx = { ...db, _db };
 const handlers = [
   referralCmd.handlerFactory({ db: dbCtx }),
   adminCmd.handlerFactory({ db: dbCtx }),
-  staffCmd.handlerFactory({ db: dbCtx, client }),
+  staffCmd.handlerFactory({ db: dbCtx, client, helpers }),
 ];
 client.on(Events.InteractionCreate, async (interaction) => {
   for (const h of handlers) {
