@@ -64,7 +64,7 @@ function definitions() {
   ];
 }
 
-function handlerFactory({ db, client }) {
+function handlerFactory({ db, client, helpers }) {
   return {
     async handle(interaction) {
       if (!interaction.isChatInputCommand() || interaction.commandName !== 'staff') return;
@@ -72,7 +72,7 @@ function handlerFactory({ db, client }) {
       if (sub === 'validate') return validate(interaction, db);
       if (sub === 'who-invited') return whoInvited(interaction, db);
       if (sub === 'invited') return invitedList(interaction, db);
-      if (sub === 'process-referrals') return processNow(interaction, db, client);
+      if (sub === 'process-referrals') return processNow(interaction, db, client, helpers);
       if (sub === 'check-confirmations') return checkConfirmations(interaction, db, client);
       if (sub === 'check-pending') return checkPending(interaction, db);
     },
@@ -169,7 +169,7 @@ async function invitedList(interaction, db) {
   return interaction.reply({ flags: MessageFlags.Ephemeral, content: header + '\n' + lines.join('\n') });
 }
 
-async function processNow(interaction, db, client) {
+async function processNow(interaction, db, client, helpers) {
   const staffRoleId = (await db.getConfig(db._db, 'staff_role_id')) || process.env.STAFF_ROLE_ID;
   if (staffRoleId && !interaction.member.roles.cache.has(staffRoleId)) {
     return interaction.reply({ flags: MessageFlags.Ephemeral, content: 'Only staff can use this command.' });
@@ -198,7 +198,11 @@ async function processNow(interaction, db, client) {
       } catch (e) {
         // Ignore errors if user not found
       }
-      
+
+      if (helpers?.notifyInviter) {
+        await helpers.notifyInviter(ref.inviter_id, `Referral for <@${ref.invitee_id}> expired; token refunded and invited role removed.`);
+      }
+
       expired++;
       continue;
     }
@@ -209,15 +213,24 @@ async function processNow(interaction, db, client) {
         const roleId = (await db.getConfig(db._db, 'required_role_id')) || process.env.REQUIRED_ROLE_ID;
         if (roleId && member.roles.cache.has(roleId)) {
           await db.confirmReferral(db._db, ref.invitee_id);
+          if (helpers?.onReferralConfirmed) {
+            await helpers.onReferralConfirmed(ref.inviter_id, ref.invitee_id);
+          }
           confirmed++;
         } else {
           await db.failReferral(db._db, ref.invitee_id, 'role_lost');
           await db.addTokens(db._db, ref.inviter_id, +1); refunded++;
+          if (helpers?.notifyInviter) {
+            await helpers.notifyInviter(ref.inviter_id, `Referral for <@${ref.invitee_id}> did not keep the required role; token refunded.`);
+          }
           failed++;
         }
       } catch {
         await db.failReferral(db._db, ref.invitee_id, 'left');
         await db.addTokens(db._db, ref.inviter_id, +1); refunded++;
+        if (helpers?.notifyInviter) {
+          await helpers.notifyInviter(ref.inviter_id, `Referral for <@${ref.invitee_id}> left the server; token refunded.`);
+        }
         failed++;
       }
     }
